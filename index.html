@@ -64,8 +64,20 @@
         </button>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-md w-full mx-auto px-4 pt-4 pb-6 space-y-5">
+    <!-- Tab-Navigation: Tagebuch vs. Wochenplan -->
+    <div class="max-w-md w-full mx-auto px-4 pt-3">
+        <div class="grid grid-cols-2 gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+            <button id="tab-btn-daily" onclick="switchTab('daily')" class="py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white transition">
+                <i class="fa-solid fa-calendar-day mr-1"></i> Heute Loggen
+            </button>
+            <button id="tab-btn-weekly" onclick="switchTab('weekly')" class="py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-calendar-week mr-1"></i> Wochenplan
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area: TAGESTRACKER (TAB 1) -->
+    <main id="tab-content-daily" class="flex-1 max-w-md w-full mx-auto px-4 pt-4 pb-6 space-y-5">
 
         <!-- Datumsauswahl / Heute -->
         <div class="flex items-center justify-between bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
@@ -215,6 +227,22 @@
                 </div>
             </div>
         </section>
+    </main>
+
+    <!-- Main Content Area: WOCHENPLANER (TAB 2) -->
+    <main id="tab-content-weekly" class="flex-1 max-w-md w-full mx-auto px-4 pt-4 pb-6 space-y-4 hidden">
+        <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 shadow-lg flex items-center justify-between">
+            <div>
+                <h2 class="font-bold text-sm text-slate-100">Mein Wochenplan</h2>
+                <p class="text-[11px] text-slate-400">Plane deine Mahlzeiten im Voraus</p>
+            </div>
+            <i class="fa-solid fa-calendar-alt text-brand-400 text-xl"></i>
+        </div>
+
+        <!-- Tage von Montag bis Sonntag -->
+        <div id="weekly-plan-container" class="space-y-3">
+            <!-- Wird dynamisch per JS generiert (Montag bis Sonntag) -->
+        </div>
     </main>
 
     <!-- MODAL 1: Mahlzeit / Multi-Zutaten hinzufügen -->
@@ -545,10 +573,13 @@
         ];
 
         // Anwendungs-State
+        let activeTab = 'daily';
         let currentDate = new Date().toISOString().split('T')[0];
         let selectedCategory = 'Frühstück';
         let recipeIngredients = []; // Temporäre Liste für den Rezept-Bauer
         let selectedPresetForIngredient = null;
+        let planningForWeekly = false;
+        let weeklyTargetDay = 'Montag';
 
         let userProfile = {
             gender: 'male',
@@ -566,6 +597,15 @@
         };
 
         let logs = {}; // Format: { "YYYY-MM-DD": [ { id, category, name, cal, p, c, f, ingredients } ] }
+        let weeklyPlan = {
+            "Montag": [],
+            "Dienstag": [],
+            "Mittwoch": [],
+            "Donnerstag": [],
+            "Freitag": [],
+            "Samstag": [],
+            "Sonntag": []
+        };
 
         // Initialisierung
         window.onload = function() {
@@ -583,6 +623,27 @@
             });
         };
 
+        function switchTab(tab) {
+            activeTab = tab;
+            const dailyTabBtn = document.getElementById('tab-btn-daily');
+            const weeklyTabBtn = document.getElementById('tab-btn-weekly');
+            const dailyContent = document.getElementById('tab-content-daily');
+            const weeklyContent = document.getElementById('tab-content-weekly');
+
+            if (tab === 'daily') {
+                dailyTabBtn.className = "py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white transition";
+                weeklyTabBtn.className = "py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition";
+                dailyContent.classList.remove('hidden');
+                weeklyContent.classList.add('hidden');
+            } else {
+                weeklyTabBtn.className = "py-2 rounded-lg text-xs font-semibold bg-brand-600 text-white transition";
+                dailyTabBtn.className = "py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition";
+                weeklyContent.classList.remove('hidden');
+                dailyContent.classList.add('hidden');
+                renderWeeklyPlan();
+            }
+        }
+
         function toggleModal(modalId) {
             const modal = document.getElementById(modalId);
             modal.classList.toggle('hidden');
@@ -598,6 +659,7 @@
         function saveToLocalStorage() {
             localStorage.setItem('nutritrack_profile', JSON.stringify(userProfile));
             localStorage.setItem('nutritrack_logs', JSON.stringify(logs));
+            localStorage.setItem('nutritrack_weekly_plan', JSON.stringify(weeklyPlan));
         }
 
         function loadFromLocalStorage() {
@@ -606,6 +668,9 @@
 
             const savedLogs = localStorage.getItem('nutritrack_logs');
             if (savedLogs) logs = JSON.parse(savedLogs);
+
+            const savedWeekly = localStorage.getItem('nutritrack_weekly_plan');
+            if (savedWeekly) weeklyPlan = JSON.parse(savedWeekly);
 
             document.getElementById('user-gender').value = userProfile.gender;
             document.getElementById('user-age').value = userProfile.age;
@@ -683,7 +748,11 @@
             }
         }
 
-        function openAddFoodModal() {
+        function openAddFoodModal(isWeekly = false, targetDay = 'Montag', defaultCategory = 'Frühstück') {
+            planningForWeekly = isWeekly;
+            weeklyTargetDay = targetDay;
+            if (defaultCategory) setCategory(defaultCategory);
+
             recipeIngredients = [];
             selectedPresetForIngredient = null;
             document.getElementById('meal-custom-title').value = '';
@@ -800,9 +869,7 @@
                 totalF += i.f;
             });
 
-            if (!logs[currentDate]) logs[currentDate] = [];
-
-            logs[currentDate].push({
+            const newMealEntry = {
                 id: Date.now(),
                 category: selectedCategory,
                 name: name,
@@ -811,10 +878,19 @@
                 carbs: totalC,
                 fat: totalF,
                 ingredients: [...recipeIngredients]
-            });
+            };
+
+            if (planningForWeekly) {
+                if (!weeklyPlan[weeklyTargetDay]) weeklyPlan[weeklyTargetDay] = [];
+                weeklyPlan[weeklyTargetDay].push(newMealEntry);
+                renderWeeklyPlan();
+            } else {
+                if (!logs[currentDate]) logs[currentDate] = [];
+                logs[currentDate].push(newMealEntry);
+                updateUI();
+            }
 
             saveToLocalStorage();
-            updateUI();
             toggleModal('add-food-modal');
         }
 
@@ -823,6 +899,63 @@
             logs[currentDate] = logs[currentDate].filter(item => item.id !== id);
             saveToLocalStorage();
             updateUI();
+        }
+
+        function deleteWeeklyEntry(day, id) {
+            if (!weeklyPlan[day]) return;
+            weeklyPlan[day] = weeklyPlan[day].filter(item => item.id !== id);
+            saveToLocalStorage();
+            renderWeeklyPlan();
+        }
+
+        function renderWeeklyPlan() {
+            const container = document.getElementById('weekly-plan-container');
+            const days = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+
+            container.innerHTML = days.map(day => {
+                const dayMeals = weeklyPlan[day] || [];
+                let dayCal = 0, dayP = 0, dayC = 0, dayF = 0;
+                dayMeals.forEach(m => {
+                    dayCal += m.cal;
+                    dayP += m.protein;
+                    dayC += m.carbs;
+                    dayF += m.fat;
+                });
+
+                return `
+                    <div class="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+                        <div class="px-3.5 py-2.5 bg-slate-800 flex items-center justify-between border-b border-slate-700/40">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-sm text-slate-100">${day}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-medium">${Math.round(dayCal)} kcal</span>
+                            </div>
+                            <button onclick="openAddFoodModal(true, '${day}')" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-brand-400 text-xs font-semibold flex items-center gap-1 transition">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Planen
+                            </button>
+                        </div>
+                        
+                        <div class="p-2 space-y-1 divide-y divide-slate-700/30">
+                            ${dayMeals.length === 0 ? 
+                                `<p class="text-[11px] text-slate-500 text-center py-2 italic">Keine Mahlzeiten für ${day} geplant</p>` :
+                                dayMeals.map(m => `
+                                    <div class="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
+                                        <div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">${m.category}</span>
+                                                <span class="font-medium text-slate-200">${m.name}</span>
+                                            </div>
+                                            <span class="text-[10px] text-slate-400 block mt-0.5">${Math.round(m.cal)} kcal • P:${m.protein.toFixed(1)}g C:${m.carbs.toFixed(1)}g F:${m.fat.toFixed(1)}g</span>
+                                        </div>
+                                        <button onclick="deleteWeeklyEntry('${day}', ${m.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+                                `).join('')
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function calculateProfileTarget() {
