@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NutriTrack Mobile - Ernährungsplaner</title>
+    <!-- Tailwind CSS CDN für modernes Mobile-First UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Touch-freundliche Interaktionen & visuelle Details */
+        body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white pb-20">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-30 bg-slate-800/90 backdrop-blur-md border-b border-slate-700/60 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-900 font-bold text-lg shadow-lg shadow-brand-500/20">
+                <i class="fa-solid font-bold fa-utensils text-slate-950 text-sm"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base leading-tight text-white">NutriTrack</h1>
+                <p class="text-[10px] text-slate-400 font-medium">Dein mobiler Makro-Tracker</p>
+            </div>
+        </div>
+        <button id="open-profile-btn" onclick="toggleModal('profile-modal')" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600/50 text-xs font-medium text-slate-200 transition">
+            <i class="fa-solid fa-user-gear text-brand-500"></i>
+            <span>Ziel & Profil</span>
+        </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-md w-full mx-auto px-4 pt-4 pb-6 space-y-5">
+
+        <!-- Datumsauswahl / Heute -->
+        <div class="flex items-center justify-between bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+            <button onclick="changeDate(-1)" class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-300 hover:bg-slate-700 text-xs">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="text-center">
+                <span id="current-date-display" class="font-semibold text-sm text-slate-200">Heute</span>
+            </div>
+            <button onclick="changeDate(1)" class="w-8 h-8 rounded-lg bg-slate-700/50 flex items-center justify-center text-slate-300 hover:bg-slate-700 text-xs">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Tagesübersicht / Kalorien & Makro Fortschritt -->
+        <section class="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/60 shadow-xl space-y-4">
+            
+            <!-- Kalorien Hauptanzeige -->
+            <div>
+                <div class="flex justify-between items-baseline mb-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kalorienübersicht</span>
+                    <span class="text-xs text-slate-400">
+                        <strong id="cal-consumed" class="text-white font-bold text-sm">0</strong> / <span id="cal-target">2000</span> kcal
+                    </span>
+                </div>
+                <div class="w-full h-3.5 bg-slate-700/70 rounded-full overflow-hidden p-0.5 border border-slate-600/30">
+                    <div id="cal-progress-bar" class="h-full bg-gradient-to-r from-brand-500 to-emerald-400 rounded-full transition-all duration-500 w-0"></div>
+                </div>
+                <div class="text-right mt-1">
+                    <span id="cal-remaining" class="text-[11px] text-slate-400">Verbleibend: 2000 kcal</span>
+                </div>
+            </div>
+
+            <!-- Makro Kacheln & Balken -->
+            <div class="grid grid-cols-3 gap-2.5 pt-1">
+                <!-- Proteine -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-semibold text-sky-400">Eiweiß</span>
+                        <i class="fa-solid fa-drumstick-bite text-[10px] text-sky-400/60"></i>
+                    </div>
+                    <div class="text-xs font-bold mb-1.5">
+                        <span id="protein-consumed">0</span><span class="text-[10px] text-slate-400 font-normal"> / <span id="protein-target">150</span>g</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="protein-bar" class="h-full bg-sky-400 rounded-full transition-all duration-300 w-0"></div>
+                    </div>
+                </div>
+
+                <!-- Kohlenhydrate -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-semibold text-amber-400">Carbs</span>
+                        <i class="fa-solid fa-wheat-awn text-[10px] text-amber-400/60"></i>
+                    </div>
+                    <div class="text-xs font-bold mb-1.5">
+                        <span id="carbs-consumed">0</span><span class="text-[10px] text-slate-400 font-normal"> / <span id="carbs-target">250</span>g</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="carbs-bar" class="h-full bg-amber-400 rounded-full transition-all duration-300 w-0"></div>
+                    </div>
+                </div>
+
+                <!-- Fette -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-700/40 flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-semibold text-rose-400">Fett</span>
+                        <i class="fa-solid fa-cheese text-[10px] text-rose-400/60"></i>
+                    </div>
+                    <div class="text-xs font-bold mb-1.5">
+                        <span id="fat-consumed">0</span><span class="text-[10px] text-slate-400 font-normal"> / <span id="fat-target">65</span>g</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="fat-bar" class="h-full bg-rose-400 rounded-full transition-all duration-300 w-0"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Schnell-Aktionsbutton -->
+        <button onclick="openAddFoodModal()" class="w-full py-3.5 bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 active:scale-[0.99] text-white font-semibold rounded-xl shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 transition duration-150">
+            <i class="fa-solid fa-plus text-sm"></i>
+            <span>Mahlzeit / Rezept zusammenstellen</span>
+        </button>
+
+        <!-- Kategorien & Mahlzeiten Log -->
+        <section class="space-y-3">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 px-1">Heutige Mahlzeiten</h2>
+
+            <!-- Kategorie 1: Frühstück -->
+            <div class="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 flex items-center justify-between border-b border-slate-700/40">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sun text-amber-400 text-sm"></i>
+                        <span class="font-semibold text-sm text-slate-200">Frühstück</span>
+                    </div>
+                    <span id="cat-cal-Frühstück" class="text-xs text-slate-400 font-medium">0 kcal</span>
+                </div>
+                <div id="list-Frühstück" class="divide-y divide-slate-700/30 p-1">
+                    <!-- Wird dynamisch befüllt -->
+                    <p class="text-xs text-slate-500 text-center py-3 italic">Keine Einträge vorhanden</p>
+                </div>
+            </div>
+
+            <!-- Kategorie 2: Mittagessen -->
+            <div class="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 flex items-center justify-between border-b border-slate-700/40">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-sun text-orange-400 text-sm"></i>
+                        <span class="font-semibold text-sm text-slate-200">Mittagessen</span>
+                    </div>
+                    <span id="cat-cal-Mittagessen" class="text-xs text-slate-400 font-medium">0 kcal</span>
+                </div>
+                <div id="list-Mittagessen" class="divide-y divide-slate-700/30 p-1">
+                    <!-- Dynamisch -->
+                    <p class="text-xs text-slate-500 text-center py-3 italic">Keine Einträge vorhanden</p>
+                </div>
+            </div>
+
+            <!-- Kategorie 3: Abendessen -->
+            <div class="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 flex items-center justify-between border-b border-slate-700/40">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-moon text-indigo-400 text-sm"></i>
+                        <span class="font-semibold text-sm text-slate-200">Abendessen</span>
+                    </div>
+                    <span id="cat-cal-Abendessen" class="text-xs text-slate-400 font-medium">0 kcal</span>
+                </div>
+                <div id="list-Abendessen" class="divide-y divide-slate-700/30 p-1">
+                    <!-- Dynamisch -->
+                    <p class="text-xs text-slate-500 text-center py-3 italic">Keine Einträge vorhanden</p>
+                </div>
+            </div>
+
+            <!-- Kategorie 4: Snacks -->
+            <div class="bg-slate-800/60 rounded-xl border border-slate-700/50 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 flex items-center justify-between border-b border-slate-700/40">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-apple-whole text-emerald-400 text-sm"></i>
+                        <span class="font-semibold text-sm text-slate-200">Snacks</span>
+                    </div>
+                    <span id="cat-cal-Snacks" class="text-xs text-slate-400 font-medium">0 kcal</span>
+                </div>
+                <div id="list-Snacks" class="divide-y divide-slate-700/30 p-1">
+                    <!-- Dynamisch -->
+                    <p class="text-xs text-slate-500 text-center py-3 italic">Keine Einträge vorhanden</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL 1: Mahlzeit / Multi-Zutaten hinzufügen -->
+    <div id="add-food-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-slate-100 text-base">Mahlzeit zusammenstellen</h3>
+                <button onclick="toggleModal('add-food-modal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 space-y-4 overflow-y-auto hide-scrollbar">
+                <!-- Kategorie wählen -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mahlzeit-Kategorie</label>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button type="button" onclick="setCategory('Frühstück')" id="cat-btn-Frühstück" class="cat-select-btn bg-slate-700 text-xs py-2 rounded-lg text-slate-300 font-medium">Frühstück</button>
+                        <button type="button" onclick="setCategory('Mittagessen')" id="cat-btn-Mittagessen" class="cat-select-btn bg-slate-700 text-xs py-2 rounded-lg text-slate-300 font-medium">Mittag</button>
+                        <button type="button" onclick="setCategory('Abendessen')" id="cat-btn-Abendessen" class="cat-select-btn bg-slate-700 text-xs py-2 rounded-lg text-slate-300 font-medium">Abend</button>
+                        <button type="button" onclick="setCategory('Snacks')" id="cat-btn-Snacks" class="cat-select-btn bg-slate-700 text-xs py-2 rounded-lg text-slate-300 font-medium">Snacks</button>
+                    </div>
+                </div>
+
+                <!-- Gericht Name (optional) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Name des Gerichts (optional)</label>
+                    <input type="text" id="meal-custom-title" placeholder="z. B. Haferbrei mit Beeren & Whey" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                </div>
+
+                <!-- Multi-Zutaten Zusammenfassung -->
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700/60 space-y-2">
+                    <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-2">
+                        <span class="font-semibold text-slate-300">Aktuelle Zutaten (<span id="ingredient-count">0</span>)</span>
+                        <span id="recipe-total-cal" class="font-bold text-brand-400">0 kcal</span>
+                    </div>
+                    
+                    <div id="recipe-ingredients-list" class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                        <p class="text-[11px] text-slate-500 italic text-center py-2">Noch keine Zutaten hinzugefügt</p>
+                    </div>
+                </div>
+
+                <hr class="border-slate-700/60">
+
+                <!-- Smart Auto-Complete Inputbereich für neue Zutat -->
+                <div class="space-y-3 bg-slate-800/40 p-3 rounded-xl border border-slate-700/40">
+                    <span class="block text-xs font-bold text-slate-200">Zutat hinzufügen</span>
+                    
+                    <div class="relative">
+                        <label class="block text-[11px] text-slate-400 mb-1">Lebensmittel suchen / eingeben</label>
+                        <input type="text" id="food-search-input" oninput="handleSearchInput(this.value)" placeholder="Tippe z. B. Hafer, Banane, Ei, Quark..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-brand-500" autocomplete="off">
+                        
+                        <!-- Auto-Complete Dropdown -->
+                        <div id="search-results-dropdown" class="absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-20 max-h-48 overflow-y-auto hidden divide-y divide-slate-800">
+                            <!-- Dynamische Suchergebnisse -->
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Menge (g / ml / Stk)</label>
+                            <input type="number" id="food-amount" value="100" oninput="recalculateIngredientMacros()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Kalorien (kcal)</label>
+                            <input type="number" id="food-cal" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-sky-400 mb-1">Protein (g)</label>
+                            <input type="number" step="0.1" id="food-protein" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-amber-400 mb-1">Carbs (g)</label>
+                            <input type="number" step="0.1" id="food-carbs" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-rose-400 mb-1">Fett (g)</label>
+                            <input type="number" step="0.1" id="food-fat" placeholder="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100 focus:outline-none focus:border-rose-500">
+                        </div>
+                    </div>
+
+                    <button onclick="addIngredientToRecipe()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-600 text-brand-400 font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Diese Zutat zur Mahlzeit hinzufügen</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-800 border-t border-slate-700 flex gap-2">
+                <button onclick="toggleModal('add-food-modal')" class="w-1/3 py-2.5 bg-slate-700 text-slate-300 font-medium text-xs rounded-lg">Abbrechen</button>
+                <button onclick="saveCompleteMeal()" class="w-2/3 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs rounded-lg shadow-md shadow-brand-600/30">Mahlzeit ins Tagebuch eintragen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Profil & Nährwert-Zielrechner -->
+    <div id="profile-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-slate-100 text-base">Profil & Tagesziele</h3>
+                <button onclick="toggleModal('profile-modal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 space-y-4 overflow-y-auto hide-scrollbar">
+                <p class="text-xs text-slate-400 leading-relaxed">Gib deine Daten ein, um deinen täglichen Kalorien- und Makronährstoffbedarf automatisch zu berechnen.</p>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Geschlecht</label>
+                        <select id="user-gender" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+                            <option value="male">Männlich</option>
+                            <option value="female">Weiblich</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Alter (Jahre)</label>
+                        <input type="number" id="user-age" value="25" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Gewicht (kg)</label>
+                        <input type="number" id="user-weight" value="75" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Größe (cm)</label>
+                        <input type="number" id="user-height" value="175" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Aktivitätslevel</label>
+                    <select id="user-activity" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+                        <option value="1.2">Wenig / Sedentär (Bürojob)</option>
+                        <option value="1.375">Leicht aktiv (1-3x Sport/Woche)</option>
+                        <option value="1.55" selected>Moderat aktiv (3-5x Sport/Woche)</option>
+                        <option value="1.725">Sehr aktiv (6-7x Sport/Woche)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-300 mb-1">Ziel</label>
+                    <select id="user-goal" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+                        <option value="lose">Gewicht verlieren / Fettabbau (-20%)</option>
+                        <option value="maintain" selected>Gewicht halten</option>
+                        <option value="gain">Muskelaufbau / Zunehmen (+15%)</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 border-t border-slate-700/60">
+                    <button onclick="calculateProfileTarget()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 text-brand-400 font-semibold text-xs rounded-lg transition">
+                        <i class="fa-solid fa-calculator mr-1"></i> Zielwerte automatisch berechnen
+                    </button>
+                </div>
+
+                <!-- Manuelle Anpassung -->
+                <div class="space-y-2 pt-2">
+                    <span class="block text-xs font-semibold text-slate-300">Manuelle Zielwerte überschreiben</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400">Kalorien (kcal)</label>
+                            <input type="number" id="target-cal-input" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-sky-400">Eiweiß (g)</label>
+                            <input type="number" id="target-protein-input" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-amber-400">Carbs (g)</label>
+                            <input type="number" id="target-carbs-input" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-rose-400">Fett (g)</label>
+                            <input type="number" id="target-fat-input" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-800 border-t border-slate-700 flex gap-2">
+                <button onclick="toggleModal('profile-modal')" class="w-1/3 py-2.5 bg-slate-700 text-slate-300 font-medium text-xs rounded-lg">Schließen</button>
+                <button onclick="saveProfileSettings()" class="w-2/3 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs rounded-lg shadow-md shadow-brand-600/30">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIK -->
+    <script>
+        // Umfangreichere Lebensmittel-Datenbank (Nährwerte pro 100g)
+        const PRESET_FOODS = [
+            // Geflügel & Fleisch
+            { name: "Putenbrust (roh)", cal: 107, p: 24, c: 0, f: 1 },
+            { name: "Putenbrust (gebraten)", cal: 135, p: 30, c: 0, f: 1.5 },
+            { name: "Putengeschnetzeltes", cal: 110, p: 23.5, c: 0, f: 1.8 },
+            { name: "Putenhackfleisch", cal: 145, p: 19, c: 0, f: 7.5 },
+            { name: "Putenwiener / Putenbratwurst", cal: 210, p: 14, c: 1, f: 16 },
+            { name: "Hähnchenbrust (roh)", cal: 106, p: 23, c: 0, f: 1.2 },
+            { name: "Hähnchenbrust (gebraten)", cal: 165, p: 31, c: 0, f: 3.6 },
+            { name: "Hähnchengeschnetzeltes", cal: 112, p: 22.5, c: 0, f: 2.2 },
+            { name: "Hähncheninnenfilet", cal: 105, p: 23, c: 0, f: 1.1 },
+            { name: "Hähnchenkeule / Schenkel (ohne Haut)", cal: 160, p: 19, c: 0, f: 9 },
+            { name: "Rinderhackfleisch (mager 5% Fett)", cal: 136, p: 21, c: 0, f: 5 },
+            { name: "Rinderhackfleisch (normal)", cal: 215, p: 20, c: 0, f: 15 },
+            { name: "Gemischtes Hackfleisch (Rind/Schwein)", cal: 240, p: 18, c: 0, f: 18 },
+            { name: "Rinderhüftsteak / Rinderfilet", cal: 120, p: 22, c: 0, f: 3.5 },
+            { name: "Rindergulasch / Rindergeschnetzeltes", cal: 125, p: 21, c: 0, f: 4 },
+            { name: "Entrecôte / Ribeye Steak", cal: 220, p: 20, c: 0, f: 15 },
+            { name: "Schweinefilet", cal: 105, p: 22, c: 0, f: 2 },
+            { name: "Schweineschnitzel (unpaniert)", cal: 115, p: 22, c: 0, f: 3 },
+            { name: "Schweineschnitzel (paniert)", cal: 220, p: 18, c: 14, f: 10 },
+            { name: "Bacon / Frühstücksspeck", cal: 330, p: 15, c: 0.5, f: 30 },
+            { name: "Kochschinken / Hinterschinken", cal: 105, p: 19, c: 1, f: 3 },
+            { name: "Lammfilet / Lammfleisch", cal: 150, p: 20, c: 0, f: 7.5 },
+
+            // Fisch & Meeresfrüchte
+            { name: "Lachsfilet (roh)", cal: 208, p: 20, c: 0, f: 13 },
+            { name: "Stremellachs / Räucherlachs", cal: 220, p: 19, c: 0.5, f: 15 },
+            { name: "Thunfisch (in Eigensaft)", cal: 116, p: 26, c: 0, f: 1 },
+            { name: "Thunfisch (in Öl)", cal: 198, p: 24, c: 0, f: 11 },
+            { name: "Kabeljau / Seelachs", cal: 82, p: 18, c: 0, f: 0.7 },
+            { name: "Garnelen / Shrimps / Scampi", cal: 85, p: 20, c: 0.8, f: 0.5 },
+            { name: "Forelle", cal: 120, p: 20, c: 0, f: 4.5 },
+            { name: "Tintenfisch / Calamari (gebraten)", cal: 175, p: 16, c: 8, f: 8 },
+            { name: "Fischstäbchen (aus dem Ofen)", cal: 180, p: 13, c: 17, f: 7 },
+
+            // Eier & Milchprodukte
+            { name: "Ei (Größe M, ca. 55g)", cal: 155, p: 13, c: 1.1, f: 11 },
+            { name: "Eiklar / Eiweiß", cal: 52, p: 11, c: 0.7, f: 0.2 },
+            { name: "Magerquark", cal: 68, p: 12, c: 4, f: 0.2 },
+            { name: "Körniger Frischkäse / Hüttenkäse (mager)", cal: 72, p: 12.5, c: 2.5, f: 1.5 },
+            { name: "Griechischer Joghurt 0%", cal: 57, p: 10, c: 4, f: 0 },
+            { name: "Griechischer Joghurt 10%", cal: 125, p: 3.5, c: 3.8, f: 10 },
+            { name: "Naturjoghurt 1.5%", cal: 50, p: 4.5, c: 5.5, f: 1.5 },
+            { name: "Skyr (Natur)", cal: 63, p: 11, c: 4, f: 0.2 },
+            { name: "Milch 1.5%", cal: 47, p: 3.4, c: 4.9, f: 1.5 },
+            { name: "Milch 3.5%", cal: 64, p: 3.3, c: 4.8, f: 3.5 },
+            { name: "Mandelmilch (ungesüßt)", cal: 13, p: 0.4, c: 0.2, f: 1.1 },
+            { name: "Hafermilch", cal: 45, p: 0.6, c: 7, f: 1.5 },
+            { name: "Sojamilch", cal: 38, p: 3.8, c: 2.5, f: 1.8 },
+            { name: "Mozzarella (light)", cal: 165, p: 19, c: 1, f: 9.5 },
+            { name: "Mozzarella (vollfett)", cal: 280, p: 18, c: 1, f: 22 },
+            { name: "Feta / Schafskäse", cal: 275, p: 14, c: 1, f: 24 },
+            { name: "Gouda / Schnittkäse 45%", cal: 350, p: 23, c: 0, f: 28 },
+            { name: "Gouda (light 16% Fett)", cal: 220, p: 30, c: 0, f: 11 },
+            { name: "Parmesan", cal: 431, p: 38, c: 4, f: 29 },
+            { name: "Schmand / Saure Sahne", cal: 190, p: 2.5, c: 3.2, f: 19 },
+            { name: "K Schlagsahne", cal: 335, p: 2.4, c: 3.2, f: 35 },
+
+            // Kohlenhydrate, Getreide & Brot
+            { name: "Haferflocken", cal: 370, p: 13, c: 59, f: 7 },
+            { name: "Reis (Basmati/Jasmine, ungekocht)", cal: 360, p: 7, c: 78, f: 0.6 },
+            { name: "Reis (gekocht)", cal: 130, p: 2.7, c: 28, f: 0.3 },
+            { name: "Nudeln / Pasta (ungekocht)", cal: 350, p: 12, c: 72, f: 1.5 },
+            { name: "Nudeln (gekocht)", cal: 140, p: 5, c: 28, f: 0.8 },
+            { name: "Vollkornbrot", cal: 220, p: 8, c: 40, f: 2.5 },
+            { name: "Eiweißbrot", cal: 260, p: 22, c: 10, f: 13 },
+            { name: "Toastbrot (weiß)", cal: 265, p: 8, c: 49, f: 3.2 },
+            { name: "Brötchen / Semmel (1 Stk ca. 60g)", cal: 270, p: 8, c: 53, f: 1.5 },
+            { name: "Laugengebäck / Brezel", cal: 290, p: 9, c: 56, f: 2.5 },
+            { name: "Kartoffeln (roh/gekocht)", cal: 77, p: 2, c: 17, f: 0.1 },
+            { name: "Süßkartoffel", cal: 86, p: 1.6, c: 20, f: 0.1 },
+            { name: "Pommes Frites (Backofen)", cal: 210, p: 3, c: 32, f: 7 },
+            { name: "Quinoa (ungekocht)", cal: 368, p: 14, c: 64, f: 6 },
+            { name: "Couscous (ungekocht)", cal: 376, p: 13, c: 77, f: 0.6 },
+            { name: "Tortilla Wrap (1 Stk ca. 60g)", cal: 300, p: 8, c: 50, f: 7 },
+            { name: "Gnocchi", cal: 160, p: 3.5, c: 34, f: 0.8 },
+
+            // Gemüse & Hülsenfrüchte
+            { name: "Avocado", cal: 160, p: 2, c: 9, f: 15 },
+            { name: "Brokkoli", cal: 34, p: 2.8, c: 7, f: 0.4 },
+            { name: "Blumenkohl", cal: 25, p: 1.9, c: 5, f: 0.3 },
+            { name: "Spinat (frisch)", cal: 23, p: 2.9, c: 3.6, f: 0.4 },
+            { name: "Rahmspinat", cal: 55, p: 2.5, c: 3.5, f: 3.2 },
+            { name: "Gurke", cal: 15, p: 0.7, c: 3.6, f: 0.1 },
+            { name: "Tomaten", cal: 18, p: 0.9, c: 3.9, f: 0.2 },
+            { name: "Paprika (rot/gelb/grün)", cal: 26, p: 1, c: 6, f: 0.3 },
+            { name: "Zucchini", cal: 17, p: 1.2, c: 3.1, f: 0.3 },
+            { name: "Möhren / Karotten", cal: 41, p: 0.9, c: 10, f: 0.2 },
+            { name: "Champignons / Pilze", cal: 22, p: 3.1, c: 3.3, f: 0.3 },
+            { name: "Zwiebeln", cal: 40, p: 1.1, c: 9, f: 0.1 },
+            { name: "Knoblauch", cal: 149, p: 6.4, c: 33, f: 0.5 },
+            { name: "Mais (Dose)", cal: 80, p: 2.8, c: 14, f: 1.2 },
+            { name: "Kichererbsen (Dose/Gekocht)", cal: 120, p: 7, c: 18, f: 2 },
+            { name: "Kidneybohnen (Dose)", cal: 110, p: 8, c: 15, f: 0.8 },
+            { name: "Linsen (braun/rot gekocht)", cal: 116, p: 9, c: 20, f: 0.4 },
+            { name: "Edamame / Sojabohnen", cal: 122, p: 11, c: 9, f: 5 },
+
+            // Obst & Beeren
+            { name: "Banane", cal: 89, p: 1.1, c: 23, f: 0.3 },
+            { name: "Apfel", cal: 52, p: 0.3, c: 14, f: 0.2 },
+            { name: "Heidelbeeren / Blaubeeren", cal: 57, p: 0.7, c: 14, f: 0.3 },
+            { name: "Himbeeren", cal: 52, p: 1.2, c: 12, f: 0.7 },
+            { name: "Erdbeeren", cal: 32, p: 0.7, c: 7.7, f: 0.3 },
+            { name: "Ananas", cal: 50, p: 0.5, c: 13, f: 0.1 },
+            { name: "Mango", cal: 60, p: 0.8, c: 15, f: 0.4 },
+            { name: "Kiwi", cal: 61, p: 1.1, c: 15, f: 0.5 },
+            { name: "Orange / Apfelsine", cal: 47, p: 0.9, c: 12, f: 0.1 },
+            { name: "Weintrauben", cal: 67, p: 0.6, c: 17, f: 0.2 },
+            { name: "Wassermelone", cal: 30, p: 0.6, c: 7.5, f: 0.2 },
+
+            // Fette, Öle & Nüsse
+            { name: "Olivenöl", cal: 884, p: 0, c: 0, f: 100 },
+            { name: "Rapsöl / Sonnenblumenöl", cal: 884, p: 0, c: 0, f: 100 },
+            { name: "Butter", cal: 717, p: 0.9, c: 0.1, f: 81 },
+            { name: "Erdnussbutter / Erdnussmus", cal: 588, p: 25, c: 20, f: 50 },
+            { name: "Mandeln", cal: 579, p: 21, c: 22, f: 50 },
+            { name: "Walnüsse", cal: 654, p: 15, c: 14, f: 65 },
+            { name: "Cashewkerne", cal: 553, p: 18, c: 30, f: 44 },
+            { name: "Chia Samen", cal: 486, p: 17, c: 42, f: 31 },
+            { name: "Leinsamen", cal: 534, p: 18, c: 29, f: 42 },
+
+            // Fitness-Supplements, Snacks & Fast Food
+            { name: "Whey Protein Pulver", cal: 380, p: 78, c: 6, f: 5 },
+            { name: "Proteinriegel (Durchschnitt)", cal: 360, p: 33, c: 35, f: 10 },
+            { name: "Reiswaffeln (1 Stk ca. 8g)", cal: 380, p: 8, c: 80, f: 3 },
+            { name: "Zartbitterschokolade (70%)", cal: 600, p: 8, c: 34, f: 43 },
+            { name: "Vollmilchschokolade", cal: 535, p: 7.5, c: 56, f: 30 },
+            { name: "Döner Kebab (Fleisch mit Brot & Soße)", cal: 215, p: 12, c: 18, f: 10 },
+            { name: "Pizza Margherita", cal: 230, p: 9, c: 30, f: 8 },
+            { name: "Sushi (Lachs Maki)", cal: 140, p: 5.5, c: 24, f: 2.2 },
+            { name: "Hummus", cal: 166, p: 8, c: 14, f: 10 }
+        ];
+
+        // Anwendungs-State
+        let currentDate = new Date().toISOString().split('T')[0];
+        let selectedCategory = 'Frühstück';
+        let recipeIngredients = []; // Temporäre Liste für den Rezept-Bauer
+        let selectedPresetForIngredient = null;
+
+        let userProfile = {
+            gender: 'male',
+            age: 25,
+            weight: 75,
+            height: 175,
+            activity: 1.55,
+            goal: 'maintain',
+            targets: {
+                cal: 2200,
+                protein: 140,
+                carbs: 250,
+                fat: 70
+            }
+        };
+
+        let logs = {}; // Format: { "YYYY-MM-DD": [ { id, category, name, cal, p, c, f, ingredients } ] }
+
+        // Initialisierung
+        window.onload = function() {
+            loadFromLocalStorage();
+            setCategory('Frühstück');
+            updateUI();
+
+            // Klick außerhalb des Auto-Completes schließt Dropdown
+            document.addEventListener('click', function(e) {
+                const dropdown = document.getElementById('search-results-dropdown');
+                const searchInput = document.getElementById('food-search-input');
+                if (dropdown && !dropdown.contains(e.target) && e.target !== searchInput) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        };
+
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.toggle('hidden');
+        }
+
+        function changeDate(days) {
+            let d = new Date(currentDate);
+            d.setDate(d.getDate() + days);
+            currentDate = d.toISOString().split('T')[0];
+            updateUI();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('nutritrack_profile', JSON.stringify(userProfile));
+            localStorage.setItem('nutritrack_logs', JSON.stringify(logs));
+        }
+
+        function loadFromLocalStorage() {
+            const savedProfile = localStorage.getItem('nutritrack_profile');
+            if (savedProfile) userProfile = JSON.parse(savedProfile);
+
+            const savedLogs = localStorage.getItem('nutritrack_logs');
+            if (savedLogs) logs = JSON.parse(savedLogs);
+
+            document.getElementById('user-gender').value = userProfile.gender;
+            document.getElementById('user-age').value = userProfile.age;
+            document.getElementById('user-weight').value = userProfile.weight;
+            document.getElementById('user-height').value = userProfile.height;
+            document.getElementById('user-activity').value = userProfile.activity;
+            document.getElementById('user-goal').value = userProfile.goal;
+
+            document.getElementById('target-cal-input').value = userProfile.targets.cal;
+            document.getElementById('target-protein-input').value = userProfile.targets.protein;
+            document.getElementById('target-carbs-input').value = userProfile.targets.carbs;
+            document.getElementById('target-fat-input').value = userProfile.targets.fat;
+        }
+
+        // Smart Search / Auto-Complete Logik
+        function handleSearchInput(query) {
+            const dropdown = document.getElementById('search-results-dropdown');
+            const trimmed = query.trim().toLowerCase();
+
+            if (!trimmed) {
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            const matches = PRESET_FOODS.filter(item => item.name.toLowerCase().includes(trimmed));
+
+            if (matches.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            dropdown.innerHTML = matches.map((item) => `
+                <div onclick='selectSearchResult(${JSON.stringify(item)})' class="p-2.5 hover:bg-slate-800 cursor-pointer flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-semibold text-slate-100 block">${item.name}</span>
+                        <span class="text-[10px] text-slate-400">P: ${item.p}g | C: ${item.c}g | F: ${item.f}g (pro 100g)</span>
+                    </div>
+                    <span class="font-bold text-brand-400 text-xs">${item.cal} kcal</span>
+                </div>
+            `).join('');
+
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectSearchResult(item) {
+            selectedPresetForIngredient = item;
+            document.getElementById('food-search-input').value = item.name;
+            document.getElementById('search-results-dropdown').classList.add('hidden');
+
+            recalculateIngredientMacros();
+        }
+
+        function recalculateIngredientMacros() {
+            if (!selectedPresetForIngredient) return;
+            const amount = parseFloat(document.getElementById('food-amount').value) || 0;
+            const ratio = amount / 100;
+
+            document.getElementById('food-cal').value = Math.round(selectedPresetForIngredient.cal * ratio);
+            document.getElementById('food-protein').value = (selectedPresetForIngredient.p * ratio).toFixed(1);
+            document.getElementById('food-carbs').value = (selectedPresetForIngredient.c * ratio).toFixed(1);
+            document.getElementById('food-fat').value = (selectedPresetForIngredient.f * ratio).toFixed(1);
+        }
+
+        function setCategory(cat) {
+            selectedCategory = cat;
+            document.querySelectorAll('.cat-select-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white');
+                btn.classList.add('bg-slate-700', 'text-slate-300');
+            });
+            const activeBtn = document.getElementById(`cat-btn-${cat}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-700', 'text-slate-300');
+                activeBtn.classList.add('bg-brand-600', 'text-white');
+            }
+        }
+
+        function openAddFoodModal() {
+            recipeIngredients = [];
+            selectedPresetForIngredient = null;
+            document.getElementById('meal-custom-title').value = '';
+            clearIngredientInputs();
+            renderRecipeIngredients();
+            toggleModal('add-food-modal');
+        }
+
+        function clearIngredientInputs() {
+            document.getElementById('food-search-input').value = '';
+            document.getElementById('food-amount').value = '100';
+            document.getElementById('food-cal').value = '';
+            document.getElementById('food-protein').value = '';
+            document.getElementById('food-carbs').value = '';
+            document.getElementById('food-fat').value = '';
+            selectedPresetForIngredient = null;
+        }
+
+        // Zutat zur temporären Rezeptur hinzufügen
+        function addIngredientToRecipe() {
+            const name = document.getElementById('food-search-input').value.trim();
+            const cal = parseFloat(document.getElementById('food-cal').value) || 0;
+            const p = parseFloat(document.getElementById('food-protein').value) || 0;
+            const c = parseFloat(document.getElementById('food-carbs').value) || 0;
+            const f = parseFloat(document.getElementById('food-fat').value) || 0;
+            const amount = parseFloat(document.getElementById('food-amount').value) || 0;
+
+            if (!name) {
+                alert('Bitte gib den Namen der Zutat ein.');
+                return;
+            }
+
+            recipeIngredients.push({
+                id: Date.now(),
+                name,
+                amount,
+                cal,
+                p,
+                c,
+                f
+            });
+
+            clearIngredientInputs();
+            renderRecipeIngredients();
+        }
+
+        function removeIngredientFromRecipe(id) {
+            recipeIngredients = recipeIngredients.filter(i => i.id !== id);
+            renderRecipeIngredients();
+        }
+
+        function renderRecipeIngredients() {
+            const container = document.getElementById('recipe-ingredients-list');
+            const countElem = document.getElementById('ingredient-count');
+            const totalCalElem = document.getElementById('recipe-total-cal');
+
+            countElem.textContent = recipeIngredients.length;
+
+            if (recipeIngredients.length === 0) {
+                container.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-2">Noch keine Zutaten hinzugefügt</p>`;
+                totalCalElem.textContent = '0 kcal';
+                return;
+            }
+
+            let totalCal = 0;
+            container.innerHTML = recipeIngredients.map(item => {
+                totalCal += item.cal;
+                return `
+                    <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg text-xs">
+                        <div>
+                            <span class="font-medium text-slate-200">${item.name}</span>
+                            <span class="text-[10px] text-slate-400 block">${item.amount}g • ${Math.round(item.cal)} kcal (P:${item.p}g C:${item.c}g F:${item.f}g)</span>
+                        </div>
+                        <button onclick="removeIngredientFromRecipe(${item.id})" class="text-slate-500 hover:text-rose-400 p-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            totalCalElem.textContent = `${Math.round(totalCal)} kcal`;
+        }
+
+        // Gesamte Mahlzeit speichern
+        function saveCompleteMeal() {
+            let name = document.getElementById('meal-custom-title').value.trim();
+
+            if (recipeIngredients.length === 0) {
+                // Einzeleingabe erlauben, falls Eingabefeld befüllt ist
+                const singleName = document.getElementById('food-search-input').value.trim();
+                if (singleName) {
+                    addIngredientToRecipe();
+                } else {
+                    alert('Bitte füge mindestens eine Zutat hinzu.');
+                    return;
+                }
+            }
+
+            if (!name) {
+                // Automatischen Titel aus Zutaten generieren
+                if (recipeIngredients.length === 1) {
+                    name = recipeIngredients[0].name;
+                } else {
+                    name = recipeIngredients.map(i => i.name).slice(0, 2).join(' & ') + (recipeIngredients.length > 2 ? '...' : '');
+                }
+            }
+
+            // Gesamtsummen berechnen
+            let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+            recipeIngredients.forEach(i => {
+                totalCal += i.cal;
+                totalP += i.p;
+                totalC += i.c;
+                totalF += i.f;
+            });
+
+            if (!logs[currentDate]) logs[currentDate] = [];
+
+            logs[currentDate].push({
+                id: Date.now(),
+                category: selectedCategory,
+                name: name,
+                cal: totalCal,
+                protein: totalP,
+                carbs: totalC,
+                fat: totalF,
+                ingredients: [...recipeIngredients]
+            });
+
+            saveToLocalStorage();
+            updateUI();
+            toggleModal('add-food-modal');
+        }
+
+        function deleteEntry(id) {
+            if (!logs[currentDate]) return;
+            logs[currentDate] = logs[currentDate].filter(item => item.id !== id);
+            saveToLocalStorage();
+            updateUI();
+        }
+
+        function calculateProfileTarget() {
+            const gender = document.getElementById('user-gender').value;
+            const age = parseFloat(document.getElementById('user-age').value) || 25;
+            const weight = parseFloat(document.getElementById('user-weight').value) || 70;
+            const height = parseFloat(document.getElementById('user-height').value) || 170;
+            const activity = parseFloat(document.getElementById('user-activity').value) || 1.55;
+            const goal = document.getElementById('user-goal').value;
+
+            let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+            bmr = (gender === 'male') ? bmr + 5 : bmr - 161;
+
+            let tdee = bmr * activity;
+            if (goal === 'lose') tdee *= 0.8;
+            if (goal === 'gain') tdee *= 1.15;
+
+            const targetCal = Math.round(tdee);
+            const targetProtein = Math.round((targetCal * 0.25) / 4);
+            const targetCarbs = Math.round((targetCal * 0.45) / 4);
+            const targetFat = Math.round((targetCal * 0.30) / 9);
+
+            document.getElementById('target-cal-input').value = targetCal;
+            document.getElementById('target-protein-input').value = targetProtein;
+            document.getElementById('target-carbs-input').value = targetCarbs;
+            document.getElementById('target-fat-input').value = targetFat;
+        }
+
+        function saveProfileSettings() {
+            userProfile.gender = document.getElementById('user-gender').value;
+            userProfile.age = parseFloat(document.getElementById('user-age').value);
+            userProfile.weight = parseFloat(document.getElementById('user-weight').value);
+            userProfile.height = parseFloat(document.getElementById('user-height').value);
+            userProfile.activity = parseFloat(document.getElementById('user-activity').value);
+            userProfile.goal = document.getElementById('user-goal').value;
+
+            userProfile.targets.cal = parseFloat(document.getElementById('target-cal-input').value) || 2000;
+            userProfile.targets.protein = parseFloat(document.getElementById('target-protein-input').value) || 150;
+            userProfile.targets.carbs = parseFloat(document.getElementById('target-carbs-input').value) || 200;
+            userProfile.targets.fat = parseFloat(document.getElementById('target-fat-input').value) || 65;
+
+            saveToLocalStorage();
+            updateUI();
+            toggleModal('profile-modal');
+        }
+
+        function updateUI() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const displayDate = document.getElementById('current-date-display');
+            if (currentDate === todayStr) {
+                displayDate.textContent = 'Heute';
+            } else {
+                const parts = currentDate.split('-');
+                displayDate.textContent = `${parts[2]}.${parts[1]}.${parts[0]}`;
+            }
+
+            const dayEntries = logs[currentDate] || [];
+
+            let totals = { cal: 0, p: 0, c: 0, f: 0 };
+            let categoryCal = { 'Frühstück': 0, 'Mittagessen': 0, 'Abendessen': 0, 'Snacks': 0 };
+
+            dayEntries.forEach(item => {
+                totals.cal += item.cal;
+                totals.p += item.protein;
+                totals.c += item.carbs;
+                totals.f += item.fat;
+
+                if (categoryCal[item.category] !== undefined) {
+                    categoryCal[item.category] += item.cal;
+                }
+            });
+
+            document.getElementById('cal-target').textContent = userProfile.targets.cal;
+            document.getElementById('protein-target').textContent = userProfile.targets.protein;
+            document.getElementById('carbs-target').textContent = userProfile.targets.carbs;
+            document.getElementById('fat-target').textContent = userProfile.targets.fat;
+
+            document.getElementById('cal-consumed').textContent = Math.round(totals.cal);
+            document.getElementById('protein-consumed').textContent = Math.round(totals.p);
+            document.getElementById('carbs-consumed').textContent = Math.round(totals.c);
+            document.getElementById('fat-consumed').textContent = Math.round(totals.f);
+
+            const calRem = userProfile.targets.cal - totals.cal;
+            document.getElementById('cal-remaining').textContent = calRem >= 0 ? 
+                `Verbleibend: ${Math.round(calRem)} kcal` : 
+                `Überschuss: ${Math.abs(Math.round(calRem))} kcal`;
+
+            const calPct = Math.min(100, (totals.cal / userProfile.targets.cal) * 100);
+            const pPct = Math.min(100, (totals.p / userProfile.targets.protein) * 100);
+            const cPct = Math.min(100, (totals.c / userProfile.targets.carbs) * 100);
+            const fPct = Math.min(100, (totals.f / userProfile.targets.fat) * 100);
+
+            document.getElementById('cal-progress-bar').style.width = `${calPct}%`;
+            document.getElementById('protein-bar').style.width = `${pPct}%`;
+            document.getElementById('carbs-bar').style.width = `${cPct}%`;
+            document.getElementById('fat-bar').style.width = `${fPct}%`;
+
+            for (let cat in categoryCal) {
+                const elem = document.getElementById(`cat-cal-${cat}`);
+                if (elem) elem.textContent = `${Math.round(categoryCal[cat])} kcal`;
+            }
+
+            const categories = ['Frühstück', 'Mittagessen', 'Abendessen', 'Snacks'];
+            categories.forEach(cat => {
+                const container = document.getElementById(`list-${cat}`);
+                const items = dayEntries.filter(i => i.category === cat);
+
+                if (items.length === 0) {
+                    container.innerHTML = `<p class="text-[11px] text-slate-500 text-center py-2.5 italic">Keine Einträge</p>`;
+                } else {
+                    container.innerHTML = items.map(item => `
+                        <div class="px-3 py-2 flex items-center justify-between group">
+                            <div class="flex-1 pr-2">
+                                <div class="flex items-baseline justify-between">
+                                    <span class="text-xs font-semibold text-slate-200">${item.name}</span>
+                                    <span class="text-xs font-bold text-slate-300">${Math.round(item.cal)} <span class="text-[10px] font-normal text-slate-400">kcal</span></span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
+                                    ${item.ingredients && item.ingredients.length > 0 ? 
+                                        `<span class="text-slate-400">${item.ingredients.length} Zutaten</span> • ` : ''}
+                                    <span class="text-sky-400">P: ${item.protein.toFixed(1)}g</span>
+                                    <span class="text-amber-400">C: ${item.carbs.toFixed(1)}g</span>
+                                    <span class="text-rose-400">F: ${item.fat.toFixed(1)}g</span>
+                                </div>
+                            </div>
+                            <button onclick="deleteEntry(${item.id})" class="text-slate-500 hover:text-rose-400 p-1.5 transition">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
